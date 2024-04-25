@@ -1,15 +1,19 @@
+# 学生の人数 N，グループの個数 M，分割回数 K をそれぞれ標準入力として受け取り，
+# 与えられた 5 つの制約 (README.md 参照) に基づいて，連言標準形 (CNF) として出力
+
 from collections import deque
 import math
 
 N, M, K = map(int, input().split())
 
-# 以下の式を基準として，x_ijk から x_v への符号化を行なっている
+# 以下の式を基準として，変数 x_ijk から x_v への符号化を行なっている
 # var = k + (j-1) * M + (i-1) * M * K
 
 clauses = deque([])
 
 # 制約 1 つ目
 # 節の個数：N * K
+# clauses.append(['No.1'])
 for n in range(1, N+1):
     for k in range(1, K+1):
         literals = deque([])
@@ -20,6 +24,7 @@ for n in range(1, N+1):
 
 # 制約 2 つ目
 # 節の個数：(M * (M-1)) // 2 * N * K
+# clauses.append(['No.2'])
 for n in range(1, N+1):
     for k in range(1, K+1):
         for i in range(1, M):
@@ -32,6 +37,7 @@ for n in range(1, N+1):
 
 # 制約 3 つ目
 # 節の個数：(N * (N-1)) // 2 * (K * (K-1)) // 2 * (M**2)
+# clauses.append(['No.3'])
 for a in range(1, N):
     for b in range(a+1, N+1):
         for i in range(1, K+1):
@@ -49,10 +55,13 @@ for a in range(1, N):
 
 # 制約 4 つ目
 # 節の個数：((N-r-1) * r + (N-r) * (r+1)) * (N mod M) + ((N-l-1) * l + (N-l) * (l+1)) * (M-(N mod M))
-if 0 != N % M:
+# clauses.append(['No.4'])
+if 0 != N % M:                # 割り切れない場合は制約 5 を用いるための変数 min を用意する
     r = int(math.ceil(N / M))
-else:
+    min = 1
+else:                         # 割り切れる場合は制約 5 は飛ばす
     r = N // M
+    min = 0
 
 l = N // M
 
@@ -151,8 +160,50 @@ for v in range(1, K+1):
     
         cnt += 1
 
-# 用意した変数の総数
+# 用意した変数 (上の 4 つの制約まで) の総数
 var_total = N * M * K + (s * (N % M) + t * (M - (N % M))) * K
+
+# 制約 5 つ目 (N % M != 0 の場合のみ)
+# 節の個数：(M - (N%M) - min - 1) * r + (M - (N%M) - min) * (min + 1)
+# clauses.append(['No.5'])
+save1 = []
+save2 = []
+for j in range(1, K+1):
+    for k in range(1, M+1):
+        save = k + (j - 1) * M
+        if k <= N % M:
+            save1.append(save)
+        else:
+            save2.append(save)
+
+if min == 1:
+    x = 0
+    s_mid = (N % M) * K - min
+    t_mid = (M - (N % M)) * K - min
+    p = s_mid * min
+    q = t_mid * min
+    for i in range(1, N+1):
+        for k in range(1, min+1):
+            for j in range(1, t_mid):
+                literals = deque([])
+                literals.append('-'+str(j + (k-1) * t_mid + x + var_total))
+                literals.append(str(j+1 + (k-1) * t_mid + x + var_total))
+                literals.append(0)
+                clauses.append(literals)
+
+        for k in range(min+1):
+            for j in range(1, t_mid+1):
+                literals = deque([])
+                literals.append('-'+str(save2[j+k-1] + (i-1) * M*K))
+                if k != 0:
+                    literals.append('-'+str(j + (k-1) * t_mid + x + var_total))
+                if k != min:
+                    literals.append(str(j + k * t_mid + x + var_total))
+                literals.append(0)
+                clauses.append(literals)
+        x += q
+
+    var_total += q * N
 
 # 実行結果を .cnf ファイルにして出力
 filename = str(N) + '-' + str(M) + '-' + str(K)
